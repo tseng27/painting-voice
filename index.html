@@ -1,0 +1,100 @@
+<!DOCTYPE html><html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>名畫會說話｜色彩人聲合成器</title>
+<style>
+body{margin:0;font-family:system-ui,"Noto Sans TC",sans-serif;background:#1b1a22;color:#eee}
+header{padding:12px 16px;background:#2a2735}h1{margin:0;font-size:1.4em}
+main{display:flex;flex-wrap:wrap;gap:14px;padding:12px}
+#stage{flex:2 1 520px;position:relative}
+canvas#c{width:100%;touch-action:none;border-radius:8px;cursor:crosshair;display:block}
+#ph{position:absolute;top:0;width:2px;background:#fff;box-shadow:0 0 8px #fff;display:none;pointer-events:none}
+aside{flex:1 1 280px}
+.card{background:#2a2735;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.92em;line-height:1.6}
+button,select,label.btn{background:#f4c542;color:#222;border:0;border-radius:6px;padding:8px 12px;font-size:1em;margin:3px;cursor:pointer}
+#start{font-size:1.3em;padding:14px 24px}
+#mouth{width:100%;height:120px}
+.big{font-size:2.2em;font-weight:bold;text-align:center}
+small{color:#aaa}
+</style></head><body>
+<header><h1>🎨🗣️ 名畫會說話</h1><small>把色彩變成人聲：滑過、點擊或拖曳畫面，聽聽畫作的「聲音」。靈感來自 <a style="color:#f4c542" href="https://chimera-vocal-synth.vercel.app/" target="_blank">CHIMERA</a> 物理模型人聲合成器</small></header>
+<main>
+<div id="stage">
+ <div><button id="start">▶ 吸一口氣，開始發聲</button>
+ <select id="pick"><option value="img/starry.jpg">梵谷《星夜》</option><option value="img/kandinsky.jpg">康丁斯基《構成第八號》</option><option value="img/scream.jpg">孟克《吶喊》</option></select>
+ <button id="scan">▶ 掃描播放（樂譜模式）</button>
+ <label class="btn">📤 上傳自己的作品<input type="file" id="up" accept="image/*" hidden></label></div>
+ <div style="position:relative;margin-top:6px"><canvas id="c"></canvas><div id="ph"></div></div>
+ <small id="credit"></small>
+</div>
+<aside>
+ <div class="card"><div class="big" id="vowel">—</div><canvas id="mouth" width="300" height="120"></canvas>
+ <div id="info"><small>按下開始後，移動到畫上</small></div></div>
+ <div class="card"><b>🔑 對應規則</b><br>
+ • <b>色相 → 母音</b>：紅=a、黃=e、綠=i、藍=u、紫=o（中間平滑內插）<br>
+ • <b>亮度 → 音高</b>：越亮越高（約 90–420 Hz）<br>
+ • <b>彩度 → 氣音／顫音</b>：灰暗=氣音多、鮮豔=顫音明顯<br>
+ • <b>銳利邊緣 → 子音爆破</b>：對比強的地方會「ts／k」（Kiki），柔和處圓潤（Bouba）</div>
+ <div class="card"><b>📘 教學說明</b><br>
+ <b>聲音與符號：</b>索緒爾認為「能指」（聲音／形式）與「所指」（意義）的關係多半是約定的；但 Bouba/Kiki 實驗顯示，有些聲音與形狀似乎天生相連。<br>
+ <b>聯覺：</b>有人聽到聲音會看見顏色。這個網頁把「看見顏色」反過來變成「聽見顏色」。<br>
+ <b>康丁斯基：</b>他認為黃色像尖銳的小號、藍色像深沉的大提琴，並以音樂「構成」命名畫作。試著聽聽《構成第八號》的幾何線條與圓。<br>
+ <b>原理：</b>聲帶（鋸齒脈衝+雜訊）→ 口腔濾波器（共振峰 F1–F4）＝人聲母音。</div>
+ <div class="card"><b>✏️ 學生延伸任務</b><br>
+ 1. 用「掃描播放」比較三幅畫的聲音，哪幅最「焦慮」？為什麼？<br>
+ 2. 畫一張「會唱 Bouba」與一張「會喊 Kiki」的作品，上傳驗證。<br>
+ 3. 設計一首「色彩樂譜」：用色塊排出一段旋律，上傳後掃描播放。<br>
+ 4. 討論：機器說出的聲音有「意義」嗎？意義從哪裡來？</div>
+ <div class="card"><small>圖片來源：Wikimedia Commons，皆為公有領域（Public Domain）作品：Vincent van Gogh, <i>The Starry Night</i> (1889), MoMA；Wassily Kandinsky, <i>Composition VIII</i> (1923), Guggenheim；Edvard Munch, <i>The Scream</i> (1893), National Gallery of Norway。作者皆已逝世逾 70 年。</small></div>
+</aside></main>
+<script>
+const V={a:[730,1090,2440,3400],e:[530,1840,2480,3500],i:[270,2290,3010,3700],o:[570,840,2410,3300],u:[300,870,2240,3200]};
+const ring=[['a',0],['e',60],['i',130],['u',220],['o',280],['a',360]];
+const c=document.getElementById('c'),g=c.getContext('2d',{willReadFrequently:true});
+let ctx,src,noise,ng,vg,lfo,lfoG,fil=[],out,started=false,data,img=new Image();
+function load(u){img=new Image();img.onload=()=>{const w=Math.min(1000,img.width),h=img.height*w/img.width;c.width=w;c.height=h;g.drawImage(img,0,0,w,h);data=g.getImageData(0,0,w,h).data;};img.src=u;}
+load('img/starry.jpg');
+pick.onchange=()=>load(pick.value);
+up.onchange=e=>{const f=e.target.files[0];if(f)load(URL.createObjectURL(f));};
+function start(){if(started)return;ctx=new (window.AudioContext||window.webkitAudioContext)();
+ src=ctx.createOscillator();src.type='sawtooth';src.frequency.value=150;
+ lfo=ctx.createOscillator();lfo.frequency.value=5.5;lfoG=ctx.createGain();lfoG.gain.value=0;lfo.connect(lfoG);lfoG.connect(src.frequency);
+ const b=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ noise=ctx.createBufferSource();noise.buffer=b;noise.loop=true;ng=ctx.createGain();ng.gain.value=0;
+ vg=ctx.createGain();vg.gain.value=1;out=ctx.createGain();out.gain.value=0;
+ const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=4000;src.connect(lp);lp.connect(vg);noise.connect(ng);
+ V.a.forEach((f,k)=>{const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=f;bp.Q.value=[8,10,14,16][k];
+  const gg=ctx.createGain();gg.gain.value=[1,.7,.35,.2][k];vg.connect(bp);ng.connect(bp);bp.connect(gg);gg.connect(out);fil.push(bp);});
+ const comp=ctx.createDynamicsCompressor();out.connect(comp);comp.connect(ctx.destination);
+ src.start();noise.start();lfo.start();started=true;start_.textContent='🔊 發聲中';}
+const start_=document.getElementById('start');start_.onclick=start;
+function rgb2hsv(r,g2,b){r/=255;g2/=255;b/=255;const M=Math.max(r,g2,b),m=Math.min(r,g2,b),d=M-m;let h=0;
+ if(d){h=M==r?((g2-b)/d)%6:M==g2?(b-r)/d+2:(r-g2)/d+4;h*=60;if(h<0)h+=360;}return[h,M?d/M:0,M];}
+function vowelOf(h){for(let k=0;k<ring.length-1;k++){const[a,h0]=ring[k],[b,h1]=ring[k+1];if(h>=h0&&h<=h1){const t=(h-h0)/(h1-h0);
+ return{f:V[a].map((x,i)=>x+(V[b][i]-x)*t),name:t<.5?a:b,t};}}return{f:V.a,name:'a'};}
+function px(x,y){x=Math.max(0,Math.min(c.width-1,x|0));y=Math.max(0,Math.min(c.height-1,y|0));const i=(y*c.width+x)*4;return[data[i],data[i+1],data[i+2]];}
+let lastEdge=0;
+function sound(x,y){if(!started||!data)return;const[r,gg,b]=px(x,y);const[h,s,v]=rgb2hsv(r,gg,b);
+ let con=0;const L=p=>(p[0]+p[1]+p[2])/3;const cL=L([r,gg,b]);for(const[dx,dy]of[[4,0],[-4,0],[0,4],[0,-4]])con=Math.max(con,Math.abs(L(px(x+dx,y+dy))-cL));
+ const vw=vowelOf(h),t=ctx.currentTime,pitch=90+v*330;
+ src.frequency.setTargetAtTime(pitch,t,.06);fil.forEach((f,k)=>f.frequency.setTargetAtTime(vw.f[k],t,.05));
+ lfoG.gain.setTargetAtTime(s*pitch*.04,t,.1);ng.gain.setTargetAtTime(.04+(1-s)*.25,t,.05);vg.gain.setTargetAtTime(.3+s*.7,t,.05);
+ out.gain.setTargetAtTime(.5,t,.03);
+ if(con>60&&t-lastEdge>.12){lastEdge=t;ng.gain.setValueAtTime(1.6,t);ng.gain.setTargetAtTime(.04+(1-s)*.25,t+.02,.03);fil[1].frequency.setValueAtTime(4500,t);}
+ document.getElementById('vowel').textContent='/'+vw.name+'/'+(con>60?' ✦Kiki':' ●Bouba');
+ info.innerHTML=`<span style="display:inline-block;width:16px;height:16px;background:rgb(${r},${gg},${b});vertical-align:middle"></span> 色相 ${h|0}° → 母音 ${vw.name}｜亮度 ${(v*100)|0}% → ${pitch|0} Hz｜彩度 ${(s*100)|0}%｜邊緣 ${con|0}`;
+ drawMouth(vw.f[0],vw.f[1]);}
+const m=document.getElementById('mouth').getContext('2d');
+function drawMouth(f1,f2){m.clearRect(0,0,300,120);const open=(f1-250)/500*45+5,wide=(f2-800)/1500*80+40;
+ m.fillStyle='#c0394b';m.beginPath();m.ellipse(150,60,wide,open,0,0,7);m.fill();m.fillStyle='#3a0d14';m.beginPath();m.ellipse(150,60,wide*.8,open*.7,0,0,7);m.fill();
+ m.fillStyle='#e87a8a';m.beginPath();m.ellipse(150,60+open*.4,wide*.45,open*.25,0,0,7);m.fill();}
+function pos(e){const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height];}
+c.addEventListener('pointerdown',e=>{start();c.setPointerCapture(e.pointerId);sound(...pos(e));});
+c.addEventListener('pointermove',e=>{if(!scanning)sound(...pos(e));});
+function hush(){if(started&&!scanning)out.gain.setTargetAtTime(0,ctx.currentTime,.08);}
+c.addEventListener('pointerleave',hush);c.addEventListener('pointerup',e=>{if(e.pointerType!='mouse')hush();});
+let scanning=false,sx=0;const ph=document.getElementById('ph');
+scan.onclick=()=>{start();scanning=!scanning;scan.textContent=scanning?'⏸ 停止掃描':'▶ 掃描播放（樂譜模式）';ph.style.display=scanning?'block':'none';sx=0;if(scanning)step();else hush();};
+function step(){if(!scanning)return;sx+=c.width/600;if(sx>=c.width)sx=0;
+ const t=performance.now()/1000,y=c.height*(.5+.4*Math.sin(t*.7));sound(sx,y);
+ const r=c.getBoundingClientRect();ph.style.left=(sx*r.width/c.width)+'px';ph.style.height=r.height+'px';requestAnimationFrame(step);}
+drawMouth(500,1200);
+</script></body></html>
