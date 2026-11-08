@@ -1,44 +1,67 @@
 <!DOCTYPE html><html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>名畫會說話｜色彩人聲合成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-body{margin:0;font-family:system-ui,"Noto Sans TC",sans-serif;background:#1b1a22;color:#eee}
-header{padding:12px 16px;background:#2a2735}h1{margin:0;font-size:1.4em}
-main{display:flex;flex-wrap:wrap;gap:14px;padding:12px}
-#stage{flex:2 1 520px;position:relative}
-canvas#c{width:100%;touch-action:none;border-radius:8px;cursor:crosshair;display:block}
-#ph{position:absolute;top:0;width:2px;background:#fff;box-shadow:0 0 8px #fff;display:none;pointer-events:none}
-aside{flex:1 1 280px}
-.card{background:#2a2735;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.92em;line-height:1.6}
-button,select,label.btn{background:#f4c542;color:#222;border:0;border-radius:6px;padding:8px 12px;font-size:1em;margin:3px;cursor:pointer}
-#start{font-size:1.3em;padding:14px 24px}
-#mouth{width:100%;height:120px}
-.big{font-size:2.2em;font-weight:bold;text-align:center}
-small{color:#aaa}
+:root{--gold:#d8b46a;--ink:#ece6da;--mut:#9d968a;--wall:#15131a}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans TC",system-ui,sans-serif;font-weight:300;color:var(--ink);
+background:radial-gradient(ellipse 70% 55% at 35% 30%,#2c2733 0%,#17151c 55%,#0d0c10 100%) fixed,var(--wall)}
+header{padding:34px 5vw 10px;text-align:center}
+h1{font-family:"Noto Serif TC",serif;font-weight:700;font-size:clamp(1.8em,4vw,2.8em);margin:0;letter-spacing:.18em;color:var(--ink)}
+header small{display:block;margin-top:8px;color:var(--mut);letter-spacing:.06em}
+header a,.card a{color:var(--gold)}
+.rule{width:60px;height:1px;background:var(--gold);margin:14px auto}
+main{display:flex;flex-wrap:wrap;gap:28px;padding:18px 5vw 50px;align-items:flex-start}
+#stage{flex:2 1 560px;min-width:0}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:18px}
+button,select,label.btn{font-family:inherit;background:transparent;color:var(--ink);border:1px solid #5a5260;border-radius:999px;padding:9px 18px;font-size:.95em;cursor:pointer;transition:all .3s}
+select option{background:#1c1a21}
+button:hover,label.btn:hover,select:hover{border-color:var(--gold);color:var(--gold)}
+#start{background:var(--gold);color:#1a1712;border-color:var(--gold);font-weight:500;box-shadow:0 0 24px #d8b46a55;animation:breathe 2.6s ease-in-out infinite}
+#start.on{animation:none;background:transparent;color:var(--gold)}
+@keyframes breathe{50%{box-shadow:0 0 42px #d8b46aaa}}
+.frame{position:relative;padding:14px;background:linear-gradient(145deg,#6b5530,#2e2414 40%,#7a6236 70%,#3a2c18);border-radius:3px;
+box-shadow:0 30px 70px #000c,0 0 120px #f3e2b81a,inset 0 0 6px #000;transition:opacity .6s}
+.frame::before{content:"";position:absolute;inset:-80px -40px auto;height:160px;background:radial-gradient(ellipse at center top,#fff4d633,transparent 70%);pointer-events:none}
+canvas#c{width:100%;touch-action:none;cursor:none;display:block;box-shadow:inset 0 0 30px #000}
+#fx{position:absolute;inset:14px;pointer-events:none}
+#ph{position:absolute;top:14px;width:2px;background:linear-gradient(#fff0,#fff,#fff0);box-shadow:0 0 14px #fff;display:none;pointer-events:none}
+.plaque{margin:16px auto 0;text-align:center;font-family:"Noto Serif TC",serif;color:var(--mut);font-size:.9em;letter-spacing:.08em}
+.plaque b{color:var(--ink);font-size:1.15em;display:block}
+aside{flex:1 1 300px;min-width:0}
+.card{background:#ffffff08;backdrop-filter:blur(6px);border:1px solid #ffffff14;border-radius:14px;padding:16px 20px;margin-bottom:16px;font-size:.93em;line-height:1.85}
+.card h3{font-family:"Noto Serif TC",serif;font-weight:500;margin:0 0 8px;color:var(--gold);letter-spacing:.1em;font-size:1.05em}
+.big{font-family:"Noto Serif TC",serif;font-size:2.6em;text-align:center;color:var(--ink);transition:all .25s;text-shadow:0 0 20px #d8b46a66}
+#mouth,#scope{width:100%;display:block}
+#scope{height:70px;margin-top:6px}
+#info{font-size:.85em;color:var(--mut);min-height:3em}
+small{color:var(--mut)}
+@media(max-width:700px){main{padding:10px 4vw 40px;gap:16px}.frame{padding:8px}#fx{inset:8px}header{padding-top:22px}}
 </style></head><body>
-<header><h1>🎨🗣️ 名畫會說話</h1><small>把色彩變成人聲：滑過、點擊或拖曳畫面，聽聽畫作的「聲音」。靈感來自 <a style="color:#f4c542" href="https://chimera-vocal-synth.vercel.app/" target="_blank">CHIMERA</a> 物理模型人聲合成器</small></header>
+<header><h1>名畫會說話</h1><div class="rule"></div><small>把色彩變成人聲：滑過、點擊或拖曳畫面，聽聽畫作的「聲音」。靈感來自 <a style="color:#f4c542" href="https://chimera-vocal-synth.vercel.app/" target="_blank">CHIMERA</a> 物理模型人聲合成器</small></header>
 <main>
 <div id="stage">
- <div><button id="start">▶ 吸一口氣，開始發聲</button>
+ <div class="ctrl"><button id="start">▶ 吸一口氣，開始發聲</button>
  <select id="pick"><option value="img/starry.jpg">梵谷《星夜》</option><option value="img/kandinsky.jpg">康丁斯基《構成第八號》</option><option value="img/scream.jpg">孟克《吶喊》</option></select>
  <button id="scan">▶ 掃描播放（樂譜模式）</button>
  <label class="btn">📤 上傳自己的作品<input type="file" id="up" accept="image/*" hidden></label></div>
- <div style="position:relative;margin-top:6px"><canvas id="c"></canvas><div id="ph"></div></div>
+ <div class="frame" id="frame"><canvas id="c"></canvas><canvas id="fx"></canvas><div id="ph"></div></div><div class="plaque" id="plaque"></div>
  <small id="credit"></small>
 </div>
 <aside>
- <div class="card"><div class="big" id="vowel">—</div><canvas id="mouth" width="300" height="120"></canvas>
+ <div class="card"><div class="big" id="vowel">—</div><canvas id="mouth" width="600" height="220"></canvas><canvas id="scope" width="600" height="140"></canvas>
  <div id="info"><small>按下開始後，移動到畫上</small></div></div>
- <div class="card"><b>🔑 對應規則</b><br>
+ <div class="card"><h3>對應規則</h3>
  • <b>色相 → 母音</b>：紅=a、黃=e、綠=i、藍=u、紫=o（中間平滑內插）<br>
  • <b>亮度 → 音高</b>：越亮越高（約 90–420 Hz）<br>
  • <b>彩度 → 氣音／顫音</b>：灰暗=氣音多、鮮豔=顫音明顯<br>
  • <b>銳利邊緣 → 子音爆破</b>：對比強的地方會「ts／k」（Kiki），柔和處圓潤（Bouba）</div>
- <div class="card"><b>📘 教學說明</b><br>
+ <div class="card"><h3>教學說明</h3>
  <b>聲音與符號：</b>索緒爾認為「能指」（聲音／形式）與「所指」（意義）的關係多半是約定的；但 Bouba/Kiki 實驗顯示，有些聲音與形狀似乎天生相連。<br>
  <b>聯覺：</b>有人聽到聲音會看見顏色。這個網頁把「看見顏色」反過來變成「聽見顏色」。<br>
  <b>康丁斯基：</b>他認為黃色像尖銳的小號、藍色像深沉的大提琴，並以音樂「構成」命名畫作。試著聽聽《構成第八號》的幾何線條與圓。<br>
  <b>原理：</b>聲帶（鋸齒脈衝+雜訊）→ 口腔濾波器（共振峰 F1–F4）＝人聲母音。</div>
- <div class="card"><b>✏️ 學生延伸任務</b><br>
+ <div class="card"><h3>學生延伸任務</h3>
  1. 用「掃描播放」比較三幅畫的聲音，哪幅最「焦慮」？為什麼？<br>
  2. 畫一張「會唱 Bouba」與一張「會喊 Kiki」的作品，上傳驗證。<br>
  3. 設計一首「色彩樂譜」：用色塊排出一段旋律，上傳後掃描播放。<br>
@@ -50,7 +73,7 @@ const V={a:[730,1090,2440,3400],e:[530,1840,2480,3500],i:[270,2290,3010,3700],o:
 const ring=[['a',0],['e',60],['i',130],['u',220],['o',280],['a',360]];
 const c=document.getElementById('c'),g=c.getContext('2d',{willReadFrequently:true});
 let ctx,src,noise,ng,vg,lfo,lfoG,fil=[],out,started=false,data,img=new Image();
-function load(u){img=new Image();img.onload=()=>{const w=Math.min(1000,img.width),h=img.height*w/img.width;c.width=w;c.height=h;g.drawImage(img,0,0,w,h);data=g.getImageData(0,0,w,h).data;};img.src=u;}
+function load(u){const fr=document.getElementById('frame');if(fr)fr.style.opacity=.15;img=new Image();img.onload=()=>{if(fr)fr.style.opacity=1;const w=Math.min(1000,img.width),h=img.height*w/img.width;c.width=w;c.height=h;g.drawImage(img,0,0,w,h);data=g.getImageData(0,0,w,h).data;};img.src=u;}
 load('img/starry.jpg');
 pick.onchange=()=>load(pick.value);
 up.onchange=e=>{const f=e.target.files[0];if(f)load(URL.createObjectURL(f));};
@@ -64,7 +87,7 @@ function start(){if(started)return;ctx=new (window.AudioContext||window.webkitAu
  V.a.forEach((f,k)=>{const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=f;bp.Q.value=[8,10,14,16][k];
   const gg=ctx.createGain();gg.gain.value=[1,.7,.35,.2][k];vg.connect(bp);ng.connect(bp);bp.connect(gg);gg.connect(out);fil.push(bp);});
  const comp=ctx.createDynamicsCompressor();out.connect(comp);comp.connect(ctx.destination);
- src.start();noise.start();lfo.start();started=true;start_.textContent='🔊 發聲中';}
+ src.start();noise.start();lfo.start();started=true;start_.textContent='● 發聲中';start_.classList.add('on');an=ctx.createAnalyser();an.fftSize=2048;comp.connect(an);}
 const start_=document.getElementById('start');start_.onclick=start;
 function rgb2hsv(r,g2,b){r/=255;g2/=255;b/=255;const M=Math.max(r,g2,b),m=Math.min(r,g2,b),d=M-m;let h=0;
  if(d){h=M==r?((g2-b)/d)%6:M==g2?(b-r)/d+2:(r-g2)/d+4;h*=60;if(h<0)h+=360;}return[h,M?d/M:0,M];}
@@ -81,11 +104,10 @@ function sound(x,y){if(!started||!data)return;const[r,gg,b]=px(x,y);const[h,s,v]
  if(con>60&&t-lastEdge>.12){lastEdge=t;ng.gain.setValueAtTime(1.6,t);ng.gain.setTargetAtTime(.04+(1-s)*.25,t+.02,.03);fil[1].frequency.setValueAtTime(4500,t);}
  document.getElementById('vowel').textContent='/'+vw.name+'/'+(con>60?' ✦Kiki':' ●Bouba');
  info.innerHTML=`<span style="display:inline-block;width:16px;height:16px;background:rgb(${r},${gg},${b});vertical-align:middle"></span> 色相 ${h|0}° → 母音 ${vw.name}｜亮度 ${(v*100)|0}% → ${pitch|0} Hz｜彩度 ${(s*100)|0}%｜邊緣 ${con|0}`;
- drawMouth(vw.f[0],vw.f[1]);}
-const m=document.getElementById('mouth').getContext('2d');
-function drawMouth(f1,f2){m.clearRect(0,0,300,120);const open=(f1-250)/500*45+5,wide=(f2-800)/1500*80+40;
- m.fillStyle='#c0394b';m.beginPath();m.ellipse(150,60,wide,open,0,0,7);m.fill();m.fillStyle='#3a0d14';m.beginPath();m.ellipse(150,60,wide*.8,open*.7,0,0,7);m.fill();
- m.fillStyle='#e87a8a';m.beginPath();m.ellipse(150,60+open*.4,wide*.45,open*.25,0,0,7);m.fill();}
+ drawMouth(vw.f[0],vw.f[1]);col=`rgb(${r},${gg},${b})`;ripple(x,y,con>60);}
+const m=document.getElementById('mouth').getContext('2d'),sc=document.getElementById('scope').getContext('2d');
+let an,tgt={o:20,w:90},cur={o:20,w:90},col='#d8b46a';
+function drawMouth(f1,f2){tgt.o=(f1-250)/500*70+8;tgt.w=(f2-800)/1500*130+70;}
 function pos(e){const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height];}
 c.addEventListener('pointerdown',e=>{start();c.setPointerCapture(e.pointerId);sound(...pos(e));});
 c.addEventListener('pointermove',e=>{if(!scanning)sound(...pos(e));});
@@ -96,5 +118,34 @@ scan.onclick=()=>{start();scanning=!scanning;scan.textContent=scanning?'⏸ 停�
 function step(){if(!scanning)return;sx+=c.width/600;if(sx>=c.width)sx=0;
  const t=performance.now()/1000,y=c.height*(.5+.4*Math.sin(t*.7));sound(sx,y);
  const r=c.getBoundingClientRect();ph.style.left=(sx*r.width/c.width)+'px';ph.style.height=r.height+'px';requestAnimationFrame(step);}
-drawMouth(500,1200);
+const fx=document.getElementById('fx'),fg=fx.getContext('2d');let rip=[],cx=-99,cy=-99;
+function ripple(x,y,k){cx=x;cy=y;if(Math.random()<.35||k)rip.push({x,y,r:4,a:1,k,c:col});}
+function loop(){requestAnimationFrame(loop);
+ if(fx.width!=c.width){fx.width=c.width;fx.height=c.height;}
+ fg.clearRect(0,0,fx.width,fx.height);fg.globalCompositeOperation='lighter';
+ rip=rip.filter(p=>(p.r+=p.k?3:1.6,p.a*=.95)>.03);
+ for(const p of rip){fg.strokeStyle=p.c;fg.globalAlpha=p.a;fg.lineWidth=2;fg.beginPath();
+  if(p.k){for(let i=0;i<8;i++){const t=i*Math.PI/4;fg.moveTo(p.x+Math.cos(t)*p.r*.5,p.y+Math.sin(t)*p.r*.5);fg.lineTo(p.x+Math.cos(t)*p.r,p.y+Math.sin(t)*p.r);}}
+  else fg.arc(p.x,p.y,p.r,0,7);fg.stroke();}
+ fg.globalAlpha=1;const gr=fg.createRadialGradient(cx,cy,0,cx,cy,26);gr.addColorStop(0,'#fff');gr.addColorStop(.25,col);gr.addColorStop(1,'#0000');fg.fillStyle=gr;fg.beginPath();fg.arc(cx,cy,26,0,7);fg.fill();
+ fg.globalCompositeOperation='source-over';
+ // mouth
+ cur.o+=(tgt.o-cur.o)*.18;cur.w+=(tgt.w-cur.w)*.18;let lv=0,td,fd;
+ if(an){td=new Uint8Array(an.fftSize);an.getByteTimeDomainData(td);for(const v of td)lv=Math.max(lv,Math.abs(v-128));fd=new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(fd);}
+ const o=cur.o*(.4+lv/80);m.clearRect(0,0,600,220);
+ const glow=m.createRadialGradient(300,110,10,300,110,260);glow.addColorStop(0,col);glow.addColorStop(1,'#0000');m.globalAlpha=.25+lv/200;m.fillStyle=glow;m.fillRect(0,0,600,220);m.globalAlpha=1;
+ m.fillStyle='#b8455a';m.beginPath();m.ellipse(300,110,cur.w+22,o+20,0,0,7);m.fill();
+ m.fillStyle='#2a0a12';m.beginPath();m.ellipse(300,110,cur.w,o,0,0,7);m.fill();
+ m.fillStyle='#f3efe6';m.fillRect(300-cur.w*.7,110-o,cur.w*1.4,Math.min(10,o*.4));
+ m.fillStyle='#e0788c';m.beginPath();m.ellipse(300,110+o*.55,cur.w*.5,o*.3,0,0,7);m.fill();
+ // scope + spectrum
+ sc.clearRect(0,0,600,140);
+ if(fd){for(let i=0;i<120;i++){const v=fd[i*2]/255;sc.fillStyle=`hsla(${40+i},70%,${40+v*30}%,${.25+v*.6})`;sc.fillRect(i*5,140-v*130,3.5,v*130);}
+  sc.strokeStyle='#f3e6c8';sc.lineWidth=2;sc.shadowColor=col;sc.shadowBlur=10;sc.beginPath();
+  for(let i=0;i<600;i++){const y=70+(td[i*2]-128)*.9;i?sc.lineTo(i,y):sc.moveTo(i,y);}sc.stroke();sc.shadowBlur=0;}
+}
+loop();
+const names={'img/starry.jpg':['星夜','梵谷，1889，紐約現代藝術博物館'],'img/kandinsky.jpg':['構成第八號','康丁斯基，1923，古根漢美術館'],'img/scream.jpg':['吶喊','孟克，1893，挪威國家美術館']};
+function plaque(u){const n=names[u]||['你的作品','學生創作'];document.getElementById('plaque').innerHTML=`<b>《${n[0]}》</b>${n[1]}`;}
+plaque('img/starry.jpg');pick.addEventListener('change',()=>plaque(pick.value));up.addEventListener('change',()=>plaque('x'));
 </script></body></html>
