@@ -63,6 +63,10 @@ details{border-top:1px solid #ffffff14;padding:6px 0}summary{cursor:pointer;colo
  <div id="info"><small>按下開始後，移動到畫上</small></div></div>
  <div class="card" id="hvc"><h3>即時色彩讀數</h3><div style="display:flex;gap:12px;align-items:center"><div id="sw" style="width:46px;height:46px;border-radius:50%;border:2px solid #fff3;box-shadow:0 0 16px #0008"></div>
  <div style="flex:1;font-size:.85em"><div>色相 H <span id="rH">—</span></div><div class="bar"><i id="bH"></i></div><div>明度 V <span id="rV">—</span></div><div class="bar"><i id="bV"></i></div><div>彩度 C <span id="rC">—</span></div><div class="bar"><i id="bC"></i></div></div></div></div>
+ <div class="card"><h3>即時線條與質感</h3><div style="font-size:.85em">
+ <div>線條方向 <span id="rD">—</span></div><div>線條強度 <span id="rS">—</span></div><div class="bar"><i id="bS"></i></div>
+ <div>質感粗糙度 <span id="rR">—</span></div><div class="bar"><i id="bR"></i></div><div>規律性 <span id="rG">—</span></div><div class="bar"><i id="bG"></i></div>
+ <div>筆觸密度 <span id="rN">—</span></div><div class="bar"><i id="bN"></i></div></div></div>
  <div class="card"><h3 style="display:flex;justify-content:space-between;cursor:pointer" id="ptog">控制台 <span id="parr">▾</span></h3>
  <div id="panel">
   <div class="row"><select id="preset"><option value="">— 預設組合 —</option><option>預設</option><option>合唱</option><option>機器人</option><option>鬼魅</option><option>動物</option></select>
@@ -76,6 +80,12 @@ details{border-top:1px solid #ffffff14;padding:6px 0}summary{cursor:pointer;colo
  • <b>明度 → 音高＋音色亮度</b>：暗=低沉悶、亮=高而明亮透氣<br>
  • <b>彩度 → 顫音、音量、泛音豐富度</b>：灰=氣聲耳語、鮮豔=飽滿人聲<br>
  • <b>銳利邊緣 → 子音爆破</b>：對比強的地方會「ts／k」（Kiki），柔和處圓潤（Bouba）</div>
+ <div class="card"><h3>線條與質感</h3>
+ • <b>線條方向</b>（Sobel 邊緣偵測）→ 滑音與左右聲像：線往上斜音高上滑、往左右延伸聲音跟著移到左右聲道；畫面白色箭頭顯示方向。<br>
+ • <b>線條強度</b> → 聲音長度：線條越強烈，音高轉換越慢、聲音拉得越長。<br>
+ • <b>質感粗糙度</b> → 粗啞低吼：明暗起伏越大，聲音越沙啞、越像低吼。<br>
+ • <b>規律性</b> → 顫抖（音量震音）：筆觸方向越一致，震音越明顯。<br>
+ • <b>筆觸密度</b> → 顆粒感：筆觸越密，聲音中的沙沙顆粒越多。</div>
  <div class="card"><h3>時間與手勢</h3>
  • <b>停留</b>：游標靜止越久，聲音越模糊消融（變悶、殘響變大、母音趨向中性「ə」，最後只剩氣息），畫面也跟著暈開；金色圓環顯示停留時間。移動即恢復清晰。<br>
  • <b>點擊次數</b>：單擊＝短音節；雙擊＝重複音節；三擊以上＝節奏性結巴／回聲連發，點越快節奏越快。<br>
@@ -96,18 +106,18 @@ details{border-top:1px solid #ffffff14;padding:6px 0}summary{cursor:pointer;colo
 const HUES=[['紅',0],['黃',60],['綠',120],['青',180],['藍',240],['紫',300]];
 const MAPS={def:['a','e','i','i','u','o'],kand:['a','i','e','o','u','o']};
 const D={body:.3,pmin:90,pmax:420,trans:0,vrate:5.5,vdepth:.5,breath:.3,edge:60,glide:.06,vol:.7,room:1.8,wet:.3,scan:1,dir:'lr',scale:'none',brush:3,chord:false,
- dwellOn:true,dwellSpd:1,clickOn:true,clickAmt:1,swellOn:true,swellSpd:1,onH:true,amtH:1,onV:true,amtV:1,onC:true,amtC:1,map:MAPS.def.slice()};
+ dwellOn:true,dwellSpd:1,clickOn:true,clickAmt:1,swellOn:true,swellSpd:1,lineOn:true,lineSens:1,texOn:true,texSens:1,onH:true,amtH:1,onV:true,amtV:1,onC:true,amtC:1,map:MAPS.def.slice()};
 const P={預設:{},合唱:{chord:true,vdepth:.8,vrate:4.8,wet:.55,room:3,body:.5},機器人:{vdepth:0,breath:0,glide:.005,scale:'major',wet:.1,edge:40},
  鬼魅:{breath:.9,vdepth:.9,vrate:3,wet:.8,room:4.5,glide:.3,pmin:200,pmax:700},動物:{body:1,pmin:300,pmax:1200,vrate:9,vdepth:.9,edge:30,glide:.02}};
 let S=JSON.parse(JSON.stringify(D));
 const SP=[['聲音身體 男←→童','body',0,1,.01,v=>v<.33?'男':v<.66?'女':'童'],['最低音高 Hz','pmin',50,600,1],['最高音高 Hz','pmax',150,1500,1],['移調（半音）','trans',-24,24,1],
  ['顫音速度 Hz','vrate',0,12,.1],['顫音深度','vdepth',0,1,.01],['氣音量','breath',0,1,.01],['邊緣敏感度（越小越敏感）','edge',10,150,1],['滑音平滑 秒','glide',.005,.5,.005],
  ['音量','vol',0,1,.01],['展廳大小（殘響秒數）','room',.2,6,.1],['殘響比例','wet',0,1,.01],['掃描速度','scan',.2,4,.1],['取樣筆刷半徑 px','brush',0,20,1],
- ['停留模糊速度','dwellSpd',.2,4,.1],['點擊反應強度','clickAmt',.2,2,.1],['長按漸強速度','swellSpd',.2,4,.1],['色相影響量','amtH',0,1,.01],['明度影響量','amtV',0,1.5,.01],['彩度影響量','amtC',0,1.5,.01]];
-const TG=[['色相→母音','onH'],['明度→音高＋音色亮度','onV'],['彩度→顫音／音量／泛音','onC'],['和弦模式（取樣 3 點）','chord'],['停留模糊','dwellOn'],['點擊節奏','clickOn'],['長按漸強','swellOn']];
+ ['停留模糊速度','dwellSpd',.2,4,.1],['點擊反應強度','clickAmt',.2,2,.1],['長按漸強速度','swellSpd',.2,4,.1],['線條敏感度','lineSens',0,3,.05],['質感敏感度','texSens',0,3,.05],['色相影響量','amtH',0,1,.01],['明度影響量','amtV',0,1.5,.01],['彩度影響量','amtC',0,1.5,.01]];
+const TG=[['色相→母音','onH'],['明度→音高＋音色亮度','onV'],['彩度→顫音／音量／泛音','onC'],['和弦模式（取樣 3 點）','chord'],['停留模糊','dwellOn'],['點擊節奏','clickOn'],['長按漸強','swellOn'],['線條→滑音／聲像／長度','lineOn'],['質感→粗啞／顫抖／顆粒','texOn']];
 const ctrls=document.getElementById('ctrls');
 function buildUI(){let h='<details open><summary>聲音參數</summary>';
- SP.forEach(([l,k,a,b,st],i)=>{h+=`<label class="sl">${l} <output id="o_${k}"></output><input type="range" id="s_${k}" min="${a}" max="${b}" step="${st}"></label>`;if(i==13)h+='</details><details open><summary>時間與手勢</summary>';if(i==16)h+='</details><details open><summary>色彩三要素</summary>';});
+ SP.forEach(([l,k,a,b,st],i)=>{h+=`<label class="sl">${l} <output id="o_${k}"></output><input type="range" id="s_${k}" min="${a}" max="${b}" step="${st}"></label>`;if(i==13)h+='</details><details open><summary>時間與手勢</summary>';if(i==16)h+='</details><details open><summary>線條與質感</summary>';if(i==18)h+='</details><details open><summary>色彩三要素</summary>';});
  TG.forEach(([l,k])=>h+=`<label class="tg"><input type="checkbox" id="t_${k}"> ${l}</label>`);
  h+=`</details><details><summary>掃描與音階</summary><label class="sl">掃描方向<select id="dir"><option value="lr">左→右</option><option value="tb">上→下</option><option value="sp">螺旋</option></select></label>
  <label class="sl">音階量化<select id="scale"><option value="none">無（連續）</option><option value="penta">五聲音階</option><option value="major">大調</option><option value="minor">小調</option></select></label></details>`;
@@ -144,7 +154,11 @@ function mkVoice(){const v={};v.osc=ctx.createOscillator();v.osc.type='sawtooth'
  v.out=ctx.createGain();v.out.gain.value=0;v.f=[];
  [8,10,14,16].forEach((q,k)=>{const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.Q.value=q;const gg=ctx.createGain();gg.gain.value=[1,.7,.35,.2][k];
   v.vg.connect(bp);v.ng.connect(bp);bp.connect(gg);gg.connect(v.out);v.f.push(bp);});
- v.out.connect(dry);v.out.connect(conv);v.osc.start();v.lfo.start();v.n.start();return v;}
+ v.am=ctx.createGain();v.am.gain.value=1;v.out.connect(v.am);
+ v.gr=ctx.createOscillator();v.gr.frequency.value=32;v.grG=ctx.createGain();v.grG.gain.value=0;v.gr.connect(v.grG);v.grG.connect(v.am.gain);
+ v.tr=ctx.createOscillator();v.tr.frequency.value=7;v.trG=ctx.createGain();v.trG.gain.value=0;v.tr.connect(v.trG);v.trG.connect(v.am.gain);
+ v.hp=ctx.createBiquadFilter();v.hp.type='highpass';v.hp.frequency.value=3500;v.gn=ctx.createGain();v.gn.gain.value=0;v.n.connect(v.hp);v.hp.connect(v.gn);v.gn.connect(v.am);
+ v.pan=ctx.createStereoPanner?ctx.createStereoPanner():ctx.createGain();v.am.connect(v.pan);v.pan.connect(dry);v.pan.connect(conv);v.gr.start();v.tr.start();v.osc.start();v.lfo.start();v.n.start();return v;}
 function start(){if(started)return;ctx=new (window.AudioContext||window.webkitAudioContext)();
  noiseBuf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
  dry=ctx.createGain();wet=ctx.createGain();conv=ctx.createConvolver();makeIR();conv.connect(wet);
@@ -160,23 +174,35 @@ function vowelOf(h){const s=h/60,i=Math.floor(s)%6,j=(i+1)%6,t=s-Math.floor(s),a
  return{f:V[a].map((x,k)=>x+(V[b][k]-x)*t),name:t<.5?a:b};}
 function px(x,y){x=Math.max(0,Math.min(c.width-1,x|0));y=Math.max(0,Math.min(c.height-1,y|0));const i=(y*c.width+x)*4;return[data[i],data[i+1],data[i+2]];}
 function sample(x,y){const r=S.brush;if(!r)return px(x,y);let s=[0,0,0],n=0;for(let dy=-r;dy<=r;dy+=Math.max(1,r/3|0))for(let dx=-r;dx<=r;dx+=Math.max(1,r/3|0)){const p=px(x+dx,y+dy);s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];n++;}return s.map(v=>v/n);}
+function texture(x,y){const R=4;let sx=0,sy=0,ms=[],ls=[];
+ for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){const X=x+i*2,Y=y+j*2,l=(a,b)=>L(px(X+a*2,Y+b*2));
+  const gx=(l(1,-1)+2*l(1,0)+l(1,1))-(l(-1,-1)+2*l(-1,0)+l(-1,1)),gy=(l(-1,1)+2*l(0,1)+l(1,1))-(l(-1,-1)+2*l(0,-1)+l(1,-1));
+  const mg=Math.hypot(gx,gy);ms.push(mg);ls.push(l(0,0));const a=Math.atan2(gy,gx)*2;sx+=Math.cos(a)*mg;sy+=Math.sin(a)*mg;}
+ const n=ms.length,mm=ms.reduce((a,b)=>a+b)/n,ml=ls.reduce((a,b)=>a+b)/n;
+ const sdM=Math.sqrt(ms.reduce((a,b)=>a+(b-mm)**2,0)/n),sdL=Math.sqrt(ls.reduce((a,b)=>a+(b-ml)**2,0)/n);
+ const coh=Math.hypot(sx,sy)/(mm*n+1e-6);
+ return{dir:Math.atan2(sy,sx)/2+Math.PI/2,str:Math.min(1,mm/250*S.lineSens),rough:Math.min(1,sdL/45*S.texSens),
+  reg:Math.min(1,coh*(1-Math.min(1,sdM/(mm+1e-6))*.5)),dens:Math.min(1,ms.filter(v=>v>60/Math.max(.2,S.texSens)).length/n)};}
+let TX={dir:0,str:0,rough:0,reg:0,dens:0};
 const SC={penta:[0,2,4,7,9],major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10]};
 function quant(f){f*=Math.pow(2,S.trans/12);if(S.scale=='none')return f;const m=69+12*Math.log2(f/440),o=Math.floor(m/12),pc=m-o*12,sc=SC[S.scale];
  let best=sc[0],bd=99;for(const s of sc.concat([12]))if(Math.abs(s-pc)<bd){bd=Math.abs(s-pc);best=s;}return 440*Math.pow(2,(o*12+best-69)/12);}
 let lastEdge=0;const L=p=>(p[0]+p[1]+p[2])/3;
 function play(v,x,y,main){const[r,gg,b]=sample(x,y);const[h,s,val]=rgb2hsv(r,gg,b);const t=ctx.currentTime,G=S.glide;
- const fs=1+S.body*.35,SW=[500,1500,2500,3500];let vw=S.onH?vowelOf(h):{f:V.a,name:'a'};
+ const fs=1+S.body*.35,SW=[500,1500,2500,3500],T=TX,LG=S.lineOn?G*(1+T.str*6):G;let vw=S.onH?vowelOf(h):{f:V.a,name:'a'};
  if(S.onH&&S.amtH<1)vw={f:vw.f.map((f,k)=>V.e[k]+(f-V.e[k])*S.amtH),name:vw.name};
  const vv=S.onV?Math.min(1,Math.max(0,.5+(val-.5)*S.amtV)):.5, cc=S.onC?Math.min(1,s*S.amtC):.6;
  let pitch=quant((S.pmin+vv*(S.pmax-S.pmin))*(1+S.body*.8));
- v.osc.frequency.setTargetAtTime(pitch,t,G);v.osc.detune.setTargetAtTime(dw*18*(main?1:-1),t,.2);v.f.forEach((f,k)=>f.frequency.setTargetAtTime(Math.min(ctx.sampleRate/2-100,(vw.f[k]+(SW[k]-vw.f[k])*dw)*fs*(S.onV?(.85+vv*.3):1)),t,G));
+ if(S.lineOn)pitch*=Math.pow(2,-Math.sin(T.dir)*T.str*4/12);v.osc.frequency.setTargetAtTime(pitch,t,LG);
+ if(v.pan.pan)v.pan.pan.setTargetAtTime(S.lineOn?Math.max(-1,Math.min(1,Math.cos(T.dir)*T.str*1.5+(x/c.width-.5)*.6)):0,t,.1);
+ const tx=S.texOn;v.grG.gain.setTargetAtTime(tx?T.rough*.7:0,t,.08);v.gr.frequency.setTargetAtTime(22+T.rough*40,t,.1);v.trG.gain.setTargetAtTime(tx?T.reg*.5:0,t,.1);v.tr.frequency.setTargetAtTime(4+T.reg*6,t,.2);v.gn.gain.setTargetAtTime(tx?T.dens*(.08+Math.random()*.25):0,t,.01);v.osc.detune.setTargetAtTime(dw*18*(main?1:-1),t,.2);v.f.forEach((f,k)=>f.frequency.setTargetAtTime(Math.min(ctx.sampleRate/2-100,(vw.f[k]+(SW[k]-vw.f[k])*dw)*fs*(S.onV?(.85+vv*.3):1)),t,G));
  v.lp.frequency.setTargetAtTime((S.onV?400+Math.pow(vv,1.5)*7000:3000)*(1-dw*.88),t,G); // dark=muffled, light=airy
  v.lfoG.gain.setTargetAtTime(pitch*.06*(S.vdepth*(S.onC?cc:.5)+swV),t,.1);
  const breathy=Math.min(1,S.breath*(S.onC?(1.6-cc*1.2):1)+(S.onV?vv*.1:0));
  v.ng.gain.setTargetAtTime(breathy*.35+dw*.25,t,G);v.vg.gain.setTargetAtTime((1-breathy*.8)*(S.onC?.25+cc*.9:.7),t,G); // vivid=rich full
- v.out.gain.setTargetAtTime((main?.55:.3)*(S.onC?.5+cc*.6:.8)*(1-dw*.75)*swK*envK,t,.03);
+ v.ng.gain.setTargetAtTime(breathy*.35+dw*.25+(tx?T.rough*.15:0),t,G);v.out.gain.setTargetAtTime((main?.55:.3)*(S.onC?.5+cc*.6:.8)*(1-dw*.75)*swK*envK,t,.03);
  return{r,gg,b,h,s,val,vw,pitch};}
-function sound(x,y){if(!started||!data)return;cx=x;cy=y;const R=play(voices[0],x,y,true);
+function sound(x,y){if(!started||!data)return;cx=x;cy=y;TX=texture(x,y);const R=play(voices[0],x,y,true);
  if(S.chord){play(voices[1],x+30,y-40);play(voices[2],x-30,y+40);}else[1,2].forEach(i=>voices[i].out.gain.setTargetAtTime(0,ctx.currentTime,.05));
  const p=px(x,y);let con=0;for(const[dx,dy]of[[4,0],[-4,0],[0,4],[0,-4]])con=Math.max(con,Math.abs(L(px(x+dx,y+dy))-L(p)));
  const t=ctx.currentTime,kiki=con>S.edge;
@@ -184,6 +210,7 @@ function sound(x,y){if(!started||!data)return;cx=x;cy=y;const R=play(voices[0],x
  vowel.textContent='/'+R.vw.name+'/'+(kiki?' ✦Kiki':' ●Bouba');col=`rgb(${R.r|0},${R.gg|0},${R.b|0})`;
  sw.style.background=col;rH.textContent=(R.h|0)+'° → '+R.vw.name;rV.textContent=(R.val*100|0)+'% → '+(R.pitch|0)+' Hz';rC.textContent=(R.s*100|0)+'%';
  bH.style.cssText=`width:${R.h/3.6}%;background:hsl(${R.h},70%,55%)`;bV.style.width=R.val*100+'%';bC.style.width=R.s*100+'%';
+ rD.textContent=(((TX.dir*180/Math.PI)%180+180)%180|0)+'°';[['rS','bS','str'],['rR','bR','rough'],['rG','bG','reg'],['rN','bN','dens']].forEach(([a,b,k])=>{document.getElementById(a).textContent=(TX[k]*100|0)+'%';document.getElementById(b).style.width=TX[k]*100+'%';});
  info.textContent=(dw>.3?'停留中，聲音逐漸消融… ':'')+(kiki?'銳利邊緣 → 子音爆破':'柔和區域 → 圓潤母音');drawMouth(R.vw.f[0],R.vw.f[1]);ripple(x,y,kiki);}
 function hush(){if(started&&!scanning)voices.forEach(v=>v.out.gain.setTargetAtTime(0,ctx.currentTime,.08));}
 function pos(e){const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height];}
@@ -245,6 +272,7 @@ function loop(){requestAnimationFrame(loop);const now=performance.now();
  fg.globalCompositeOperation='source-over';
  if(dw>.02){const rr=30+dw*70;fg.save();fg.beginPath();fg.arc(cx,cy,rr,0,7);fg.clip();fg.filter=`blur(${dw*9}px)`;fg.drawImage(c,0,0);fg.filter='none';
   const hg=fg.createRadialGradient(cx,cy,0,cx,cy,rr);hg.addColorStop(0,`rgba(255,248,230,${dw*.25})`);hg.addColorStop(1,'#0000');fg.fillStyle=hg;fg.fillRect(cx-rr,cy-rr,rr*2,rr*2);fg.restore();}
+ if(S.lineOn&&TX.str>.05&&(inside||down||scanning)){const Ln=20+TX.str*60,dx=Math.cos(TX.dir)*Ln,dy=Math.sin(TX.dir)*Ln;fg.strokeStyle='#fff8e6cc';fg.fillStyle='#fff8e6cc';fg.lineWidth=2;fg.beginPath();fg.moveTo(cx-dx,cy-dy);fg.lineTo(cx+dx,cy+dy);fg.stroke();const a=TX.dir;fg.beginPath();fg.moveTo(cx+dx,cy+dy);fg.lineTo(cx+dx-Math.cos(a-.4)*10,cy+dy-Math.sin(a-.4)*10);fg.lineTo(cx+dx-Math.cos(a+.4)*10,cy+dy-Math.sin(a+.4)*10);fg.fill();}
  if((inside||down)&&!scanning){fg.strokeStyle='#ffffff22';fg.lineWidth=3;fg.beginPath();fg.arc(cx,cy,34,0,7);fg.stroke();
   fg.strokeStyle=down&&S.swellOn?'#e8806a':'#d8b46a';fg.lineWidth=3;fg.beginPath();const pr=down&&S.swellOn?Math.min(1,(swK-1)/.8):dw;fg.arc(cx,cy,34,-Math.PI/2,-Math.PI/2+pr*Math.PI*2);fg.stroke();}
  // mouth
